@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
+    "build": "npm install --ignore-scripts && npm rebuild @discordjs/opus sodium-native ffmpeg-static",
     "start": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o ./yt-dlp && chmod +x ./yt-dlp && node src/deploy-commands.js && node src/index.js",
     "start:local": "node src/deploy-commands.js && node src/index.js",
     "deploy": "node src/deploy-commands.js"
