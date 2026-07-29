@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, Collection, ActivityType } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
+import http from 'http';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { config, validateConfig } from './config.js';
 import { GuildQueue } from './audio/GuildQueue.js';
@@ -13,6 +14,15 @@ if (!validateConfig()) {
   console.error('\n⚠️ Please configure your DISCORD_TOKEN and CLIENT_ID in the .env file before starting Harsha.');
   process.exit(1);
 }
+
+// 🌐 Lightweight HTTP Health-Check Server for Render / Web Services
+const PORT = process.env.PORT || 10000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('⚡ Harsha Music Bot is Online & Operational 24/7!\n');
+}).listen(PORT, () => {
+  console.log(`🌐 Health check web server running on port ${PORT}`);
+});
 
 // Create Client instance
 const client = new Client({
