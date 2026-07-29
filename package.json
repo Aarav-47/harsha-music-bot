@@ -1,0 +1,32 @@
+{
+  "name": "harsha-music-bot",
+  "version": "1.0.0",
+  "description": "Harsha - Feature-rich Discord Music Bot with slash commands, interactive button UI controls, queue management, and ad-free multi-platform yt-dlp audio streaming.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy": "node src/deploy-commands.js"
+  },
+  "keywords": [
+    "harsha",
+    "discord",
+    "bot",
+    "music",
+    "discord.js",
+    "yt-dlp",
+    "audio",
+    "voice"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@discordjs/opus": "^0.9.0",
+    "@discordjs/voice": "^0.18.0",
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7",
+    "ffmpeg-static": "^5.2.0",
+    "sodium-native": "^4.3.1",
+    "yt-dlp-exec": "^1.0.2"
+  }
+}
