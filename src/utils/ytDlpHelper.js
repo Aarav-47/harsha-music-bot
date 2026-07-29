@@ -88,6 +88,8 @@ export async function getTrackInfo(query, requestedBy) {
       '--no-warnings',
       '--no-check-certificate',
       '--skip-download',
+      '--ignore-no-formats-error',
+      '--no-check-formats',
       '--print', '%(title)s\t%(webpage_url)s\t%(duration)s\t%(thumbnail)s\t%(uploader)s',
       ...baseCookieArgs(),
     ];
