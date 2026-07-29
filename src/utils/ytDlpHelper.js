@@ -22,7 +22,7 @@ export function formatDuration(seconds) {
 
 /**
  * Extract info for any query or multi-platform URL (YouTube, SoundCloud, Spotify, Vimeo, Twitch, Bandcamp, TikTok, etc.)
- * Strips all ads automatically by extracting raw opus/audio stream data.
+ * Uses iOS / Android client headers to bypass YouTube datacenter IP bot detection.
  * @param {string} query 
  * @param {string} requestedBy 
  * @returns {Promise<Array>}
@@ -36,11 +36,11 @@ export async function getTrackInfo(query, requestedBy) {
     const rawData = await ytDlpExec(searchTarget, {
       dumpSingleJson: true,
       noWarnings: true,
-      noCallHome: true,
       noCheckCertificate: true,
       preferFreeFormats: true,
-      youtubeSkipDashManifest: true,
       flatPlaylist: false,
+      extractorArgs: 'youtube:player_client=ios,mweb',
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
     });
 
     const output = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
@@ -78,18 +78,20 @@ export async function getTrackInfo(query, requestedBy) {
 
 /**
  * Create a playable AudioResource from track URL using yt-dlp & ffmpeg
- * Strips all video ads and streams pure, high-fidelity ad-free audio.
+ * Uses iOS / Mobile Web player clients to stream pure, high-fidelity ad-free audio on Cloud/Render IPs.
  * @param {string} trackUrl 
  * @returns {Promise<{ resource: import('@discordjs/voice').AudioResource, process: any }>}
  */
 export async function createAudioResourceFromUrl(trackUrl) {
   return new Promise((resolve, reject) => {
-    // Spawn yt-dlp child process directly via ytDlpExec.exec
+    // Spawn yt-dlp child process with iOS player client args to bypass YouTube bot detection
     const ytdlpProc = ytDlpExec.exec(
       trackUrl,
       {
         format: 'bestaudio/best',
         output: '-',
+        extractorArgs: 'youtube:player_client=ios,mweb',
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
       },
       { stdio: ['ignore', 'pipe', 'pipe'] }
     );
