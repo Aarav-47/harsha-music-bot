@@ -1,4 +1,4 @@
-import ytDlpExec from 'yt-dlp-exec';
+import { create } from 'yt-dlp-exec';
 import ffmpegPath from 'ffmpeg-static';
 import { createAudioResource, StreamType } from '@discordjs/voice';
 import { spawn } from 'child_process';
@@ -8,7 +8,18 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const COOKIES_PATH = path.join(__dirname, '../../cookies.txt');
+const PROJECT_ROOT = path.join(__dirname, '../..');
+const COOKIES_PATH = path.join(PROJECT_ROOT, 'cookies.txt');
+
+// Use the latest yt-dlp binary downloaded at startup (Render/cloud),
+// or fall back to the npm-bundled binary (local dev).
+const YTDLP_BIN = fs.existsSync(path.join(PROJECT_ROOT, 'yt-dlp'))
+  ? path.join(PROJECT_ROOT, 'yt-dlp')
+  : undefined; // undefined = use default from yt-dlp-exec
+
+const ytDlpExec = YTDLP_BIN ? create(YTDLP_BIN) : (await import('yt-dlp-exec')).default;
+
+console.log(`🔧 yt-dlp binary: ${YTDLP_BIN || 'npm default'}`);
 
 /**
  * Write cookies from environment variable to file (for Render / cloud hosting)
@@ -110,16 +121,21 @@ export async function getTrackInfo(query, requestedBy) {
  */
 export async function createAudioResourceFromUrl(trackUrl) {
   return new Promise((resolve, reject) => {
-    const opts = {
-      format: 'bestaudio/best',
-      output: '-',
-    };
+    const ytdlpArgs = [
+      trackUrl,
+      '-f', 'bestaudio/best',
+      '-o', '-',
+      '--no-warnings',
+      '--no-check-certificate',
+    ];
 
     if (ensureCookiesFile()) {
-      opts.cookies = COOKIES_PATH;
+      ytdlpArgs.push('--cookies', COOKIES_PATH);
     }
 
-    const ytdlpProc = ytDlpExec.exec(trackUrl, opts, {
+    const binaryPath = YTDLP_BIN || path.join(PROJECT_ROOT, 'node_modules/yt-dlp-exec/bin/yt-dlp');
+
+    const ytdlpProc = spawn(binaryPath, ytdlpArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -137,9 +153,7 @@ export async function createAudioResourceFromUrl(trackUrl) {
       { stdio: ['pipe', 'pipe', 'pipe'] }
     );
 
-    if (ytdlpProc.stdout) {
-      ytdlpProc.stdout.pipe(ffmpegProc.stdin);
-    }
+    ytdlpProc.stdout.pipe(ffmpegProc.stdin);
 
     ytdlpProc.on('error', (err) => {
       console.error('yt-dlp process error:', err);

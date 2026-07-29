@@ -5,8 +5,8 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "postinstall": "node node_modules/yt-dlp-exec/scripts/postinstall.js",
-    "start": "node node_modules/yt-dlp-exec/scripts/postinstall.js && node src/deploy-commands.js && node src/index.js",
+    "start": "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o ./yt-dlp && chmod +x ./yt-dlp && node src/deploy-commands.js && node src/index.js",
+    "start:local": "node src/deploy-commands.js && node src/index.js",
     "deploy": "node src/deploy-commands.js"
   },
   "keywords": [
