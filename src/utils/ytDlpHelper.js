@@ -15,19 +15,34 @@ const COOKIES_PATH = path.join(PROJECT_ROOT, 'cookies.txt');
 // or fall back to the npm-bundled binary (local dev).
 const YTDLP_BIN = fs.existsSync(path.join(PROJECT_ROOT, 'yt-dlp'))
   ? path.join(PROJECT_ROOT, 'yt-dlp')
-  : undefined; // undefined = use default from yt-dlp-exec
+  : undefined;
 
 const ytDlpExec = YTDLP_BIN ? create(YTDLP_BIN) : (await import('yt-dlp-exec')).default;
 
 console.log(`🔧 yt-dlp binary: ${YTDLP_BIN || 'npm default'}`);
 
 /**
- * Write cookies from environment variable to file (for Render / cloud hosting)
+ * Write cookies from environment variable to file.
+ * Handles base64-encoded cookies (recommended) or raw text.
  */
 function ensureCookiesFile() {
   if (process.env.YOUTUBE_COOKIES && !fs.existsSync(COOKIES_PATH)) {
-    fs.writeFileSync(COOKIES_PATH, process.env.YOUTUBE_COOKIES, 'utf-8');
-    console.log('🍪 YouTube cookies file written from YOUTUBE_COOKIES env var.');
+    let cookieContent = process.env.YOUTUBE_COOKIES;
+
+    // Try base64 decode first (recommended method - preserves tabs & newlines)
+    try {
+      const decoded = Buffer.from(cookieContent, 'base64').toString('utf-8');
+      // If it looks like a valid Netscape cookies file, use the decoded version
+      if (decoded.includes('.youtube.com') || decoded.includes('# Netscape') || decoded.includes('# HTTP Cookie')) {
+        cookieContent = decoded;
+        console.log('🍪 Decoded base64-encoded YouTube cookies.');
+      }
+    } catch (e) {
+      // Not base64, use as-is
+    }
+
+    fs.writeFileSync(COOKIES_PATH, cookieContent, 'utf-8');
+    console.log('🍪 YouTube cookies file written.');
   }
   return fs.existsSync(COOKIES_PATH);
 }
@@ -48,72 +63,77 @@ export function formatDuration(seconds) {
 }
 
 /**
- * Build common yt-dlp options, injecting cookies if available.
+ * Build common yt-dlp args array for spawn calls.
  */
-function baseOptions() {
-  const opts = {
-    noWarnings: true,
-    noCheckCertificate: true,
-    flatPlaylist: false,
-  };
-
+function baseCookieArgs() {
   if (ensureCookiesFile()) {
-    opts.cookies = COOKIES_PATH;
+    return ['--cookies', COOKIES_PATH];
   }
-
-  return opts;
+  return [];
 }
 
 /**
- * Extract track info from any URL or search query.
- * Supports YouTube, SoundCloud, Spotify, Vimeo, Twitch, Bandcamp, TikTok, etc.
+ * Extract track info using --print fields (avoids format resolution issues).
  */
 export async function getTrackInfo(query, requestedBy) {
   const cleanQuery = query.trim();
   const isUrl = /^https?:\/\//i.test(cleanQuery);
   const searchTarget = isUrl ? cleanQuery : `ytsearch1:${cleanQuery}`;
 
-  try {
-    const rawData = await ytDlpExec(searchTarget, {
-      ...baseOptions(),
-      dumpSingleJson: true,
+  const binaryPath = YTDLP_BIN || path.join(PROJECT_ROOT, 'node_modules/yt-dlp-exec/bin/yt-dlp');
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      searchTarget,
+      '--no-warnings',
+      '--no-check-certificate',
+      '--skip-download',
+      '--print', '%(title)s\t%(webpage_url)s\t%(duration)s\t%(thumbnail)s\t%(uploader)s',
+      ...baseCookieArgs(),
+    ];
+
+    const proc = spawn(binaryPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => { stdout += data.toString(); });
+    proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+    proc.on('close', (code) => {
+      if (code !== 0 || !stdout.trim()) {
+        console.error('yt-dlp metadata error:', stderr || `exit code ${code}`);
+        return reject(new Error(`Failed to fetch track info: ${stderr || 'no output'}`));
+      }
+
+      const lines = stdout.trim().split('\n');
+      const tracks = [];
+
+      for (const line of lines) {
+        const parts = line.split('\t');
+        if (parts.length < 2) continue;
+
+        const [title, url, durationStr, thumbnail, uploader] = parts;
+        const durationSec = parseFloat(durationStr) || 0;
+
+        tracks.push({
+          title: title || 'Harsha Music Track',
+          url: url || cleanQuery,
+          durationSec,
+          formattedDuration: formatDuration(durationSec),
+          thumbnail: (thumbnail && thumbnail !== 'NA') ? thumbnail : 'https://cdn.discordapp.com/embed/avatars/0.png',
+          uploader: (uploader && uploader !== 'NA') ? uploader : 'Unknown Artist',
+          requestedBy,
+        });
+      }
+
+      if (tracks.length === 0) {
+        return reject(new Error('No valid track found.'));
+      }
+
+      resolve(tracks);
     });
-
-    const output = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-
-    if (!output) {
-      throw new Error('No media results found.');
-    }
-
-    const items = output._type === 'playlist' ? output.entries : [output];
-    const tracks = [];
-
-    for (const item of items) {
-      if (!item) continue;
-      tracks.push({
-        title: item.title || item.track || 'Harsha Music Track',
-        url: item.webpage_url || item.url || cleanQuery,
-        durationSec: item.duration || 0,
-        formattedDuration: formatDuration(item.duration),
-        thumbnail:
-          item.thumbnail ||
-          (item.thumbnails && item.thumbnails[0]?.url) ||
-          'https://cdn.discordapp.com/embed/avatars/0.png',
-        uploader:
-          item.uploader || item.artist || item.channel || 'Unknown Artist',
-        requestedBy,
-      });
-    }
-
-    if (tracks.length === 0) {
-      throw new Error('No valid track extracted.');
-    }
-
-    return tracks;
-  } catch (error) {
-    console.error('yt-dlp extraction error:', error.message);
-    throw new Error(`Failed to play track: ${error.message}`);
-  }
+  });
 }
 
 /**
@@ -121,19 +141,16 @@ export async function getTrackInfo(query, requestedBy) {
  */
 export async function createAudioResourceFromUrl(trackUrl) {
   return new Promise((resolve, reject) => {
+    const binaryPath = YTDLP_BIN || path.join(PROJECT_ROOT, 'node_modules/yt-dlp-exec/bin/yt-dlp');
+
     const ytdlpArgs = [
       trackUrl,
       '-f', 'bestaudio/best',
       '-o', '-',
       '--no-warnings',
       '--no-check-certificate',
+      ...baseCookieArgs(),
     ];
-
-    if (ensureCookiesFile()) {
-      ytdlpArgs.push('--cookies', COOKIES_PATH);
-    }
-
-    const binaryPath = YTDLP_BIN || path.join(PROJECT_ROOT, 'node_modules/yt-dlp-exec/bin/yt-dlp');
 
     const ytdlpProc = spawn(binaryPath, ytdlpArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
