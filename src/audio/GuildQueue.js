@@ -1,7 +1,6 @@
 import {
   createAudioPlayer,
   AudioPlayerStatus,
-  joinsVoiceChannel,
   joinVoiceChannel,
   VoiceConnectionStatus,
   entersState,
@@ -349,7 +348,7 @@ export class GuildQueue {
     this.idleTimer = setTimeout(() => {
       if (this.textChannel) {
         this.textChannel.send({
-          embeds: [createErrorEmbed('Disconnected', 'Left the voice channel due to inactivity (5 minutes idle).')],
+          embeds: [createErrorEmbed('Harsha Disconnected', 'Left voice channel due to 5 minutes of inactivity.')],
         }).catch(() => {});
       }
       this.destroy();
