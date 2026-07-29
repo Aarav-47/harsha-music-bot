@@ -43,7 +43,6 @@ function baseOptions() {
   const opts = {
     noWarnings: true,
     noCheckCertificate: true,
-    preferFreeFormats: true,
     flatPlaylist: false,
   };
 
