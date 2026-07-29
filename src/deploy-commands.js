@@ -9,8 +9,8 @@ const __dirname = path.dirname(__filename);
 
 async function deployCommands() {
   if (!validateConfig()) {
-    console.error('Cannot deploy commands without valid .env configuration.');
-    process.exit(1);
+    console.error('⚠️ Skipping command deployment: DISCORD_TOKEN or CLIENT_ID is missing in .env');
+    return;
   }
 
   const commands = [];
