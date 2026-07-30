@@ -19,7 +19,8 @@ async function deployCommands() {
 
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
-    const command = (await import(pathToFileURL(filePath).href)).default;
+    const mod = await import(pathToFileURL(filePath).href);
+    const command = mod.default || mod;
     if (command && command.data) {
       commands.push(command.data.toJSON());
       console.log(`Loaded command for registration: /${command.data.name}`);

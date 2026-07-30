@@ -17,18 +17,21 @@ export default {
         {
           name: '🎵 Playback Commands',
           value:
-            '• `/play <query|url>` — Play ad-free song or music video from any platform\n' +
+            '• `/play <query|url>` — Play ad-free song from Spotify, YouTube, SoundCloud, etc.\n' +
             '• `/pause` — Pause current playback\n' +
             '• `/resume` — Resume paused audio\n' +
             '• `/skip` — Skip to next song in queue\n' +
+            '• `/voteskip` — Vote to skip current track (majority vote)\n' +
             '• `/stop` — Stop playing and clear queue\n' +
             '• `/leave` — Disconnect bot from voice channel',
         },
         {
-          name: '🎛️ Queue & Player Controls',
+          name: '🎛️ Queue & Sound Effects',
           value:
-            '• `/nowplaying` — Show current song details & interactive button panel\n' +
-            '• `/queue [page]` — Display queued songs (paginated)\n' +
+            '• `/nowplaying` — Show current song details, live progress bar & visualizer\n' +
+            '• `/queue [page]` — Display queued songs\n' +
+            '• `/history [page]` — Show recently played song history\n' +
+            '• `/filter <bass|nightcore|vaporwave|8d|off>` — Apply audio effects\n' +
             '• `/volume <0-100>` — Set audio volume percentage\n' +
             '• `/loop <off|track|queue>` — Toggle repeat mode\n' +
             '• `/shuffle` — Randomize upcoming tracks in queue',
@@ -40,7 +43,7 @@ export default {
         {
           name: '🎛️ Interactive Button Panel',
           value:
-            'Whenever a song plays, Harsha posts an interactive control panel in chat with buttons for **Pause/Resume (⏯️), Skip (⏭️), Stop (⏹️), Loop (🔁), Shuffle (🔀), and Queue (📜)**.',
+            'Harsha posts an interactive control panel in chat with live progress bar, visualizer, and buttons for **Pause/Resume (⏯️), Skip (⏭️), Stop (⏹️), Loop (🔁), and Shuffle (🔀)**.',
         }
       )
       .setFooter({ text: 'Harsha Music Bot • Ad-Free Multi-Platform Streamer' })

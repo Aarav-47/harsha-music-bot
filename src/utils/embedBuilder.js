@@ -23,7 +23,7 @@ export function createProgressBar(currentSec = 0, totalSec = 0, length = 14) {
 /**
  * Create Harsha Now Playing Embed
  */
-export function createNowPlayingEmbed(track, queue) {
+export function createNowPlayingEmbed(track, queue, elapsedSec = 0) {
   const loopStatusMap = {
     off: '➡️ Off',
     track: '🔂 Single Track',
@@ -31,24 +31,67 @@ export function createNowPlayingEmbed(track, queue) {
   };
 
   const volumePct = Math.round((queue.volume || 0.8) * 100);
+  const platform = track.platform || { name: 'Harsha Audio', color: COLORS.HARSHA, icon: '⚡' };
+  const filterName = (queue.activeFilter || 'none').toUpperCase();
+
+  const currentFormatted = formatSec(elapsedSec);
+  const totalFormatted = track.formattedDuration || 'Live';
+  const progressBarStr = createProgressBar(elapsedSec, track.durationSec || 0, 12);
 
   const embed = new EmbedBuilder()
-    .setColor(COLORS.HARSHA)
-    .setAuthor({ name: '⚡ HARSHA MUSIC • NOW PLAYING (AD-FREE)', iconURL: 'https://cdn.discordapp.com/emojis/853303668853768222.gif' })
+    .setColor(platform.color || COLORS.HARSHA)
+    .setAuthor({ name: `${platform.icon} HARSHA MUSIC • NOW PLAYING (${platform.name.toUpperCase()})`, iconURL: 'https://cdn.discordapp.com/emojis/853303668853768222.gif' })
     .setTitle(track.title)
-    .setURL(track.url)
+    .setURL(track.url || track.originalUrl)
     .setThumbnail(track.thumbnail)
     .addFields(
       { name: '👤 Artist / Channel', value: `\`${track.uploader}\``, inline: true },
-      { name: '⏱️ Duration', value: `\`${track.formattedDuration}\``, inline: true },
+      { name: '⏱️ Duration', value: `\`${totalFormatted}\``, inline: true },
       { name: '🙋 Requested By', value: `<@${track.requestedBy}>`, inline: true },
       { name: '🔊 Volume', value: `\`${volumePct}%\``, inline: true },
+      { name: '🎧 Filter', value: `\`${filterName}\``, inline: true },
       { name: '🔁 Loop Mode', value: `\`${loopStatusMap[queue.loopMode] || 'Off'}\``, inline: true },
-      { name: '📜 Queue Length', value: `\`${queue.tracks.length} track(s)\``, inline: true }
+      { name: '⏳ Progress', value: `\`${progressBarStr}\` \`[${currentFormatted} / ${totalFormatted}]\``, inline: false }
     )
-    .setFooter({ text: 'Harsha • Multi-Platform Ad-Free Audio & Music Video Streamer' })
+    .setFooter({ text: `Harsha • Source: ${platform.name} • ${queue.tracks.length} track(s) in queue` })
     .setTimestamp();
 
+  return embed;
+}
+
+function formatSec(seconds) {
+  if (!seconds || isNaN(seconds)) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Create History Embed
+ */
+export function createHistoryEmbed(history, page = 1) {
+  const embed = new EmbedBuilder()
+    .setColor(COLORS.HARSHA)
+    .setTitle(`📜 Harsha Recently Played History (${history.length} tracks)`)
+    .setTimestamp();
+
+  if (history.length === 0) {
+    embed.setDescription('No songs have been played yet in this session!');
+    return embed;
+  }
+
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(history.length / itemsPerPage) || 1;
+  const start = (page - 1) * itemsPerPage;
+  const pageHistory = history.slice(start, start + itemsPerPage);
+
+  let description = '';
+  pageHistory.forEach((t, i) => {
+    description += `**${start + i + 1}.** [${t.title}](${t.url}) | \`${t.formattedDuration}\` - Req by <@${t.requestedBy}>\n`;
+  });
+
+  embed.setDescription(description);
+  embed.setFooter({ text: `Harsha Music • Page ${page} of ${totalPages}` });
   return embed;
 }
 

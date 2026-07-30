@@ -13,6 +13,8 @@ import {
   createSuccessEmbed,
   createQueueEmbed,
 } from '../utils/embedBuilder.js';
+import { generateWaveform } from '../utils/visualizer.js';
+import { AttachmentBuilder } from 'discord.js';
 import { config } from '../config.js';
 
 export class GuildQueue {
@@ -24,9 +26,16 @@ export class GuildQueue {
     this.client = client;
     this.guildId = guildId;
     this.tracks = [];
+    this.history = []; // History of played tracks (max 50)
     this.currentTrack = null;
     this.loopMode = 'off'; // 'off' | 'track' | 'queue'
     this.volume = config.defaultVolume / 100;
+    this.activeFilter = 'none'; // 'none' | 'bass' | 'nightcore' | 'vaporwave' | '8d'
+
+    this.skipVotes = new Set(); // User IDs who voted to skip
+
+    this.playbackStartedAt = 0;
+    this.progressInterval = null;
     
     /** @type {import('discord.js').TextBasedChannel|null} */
     this.textChannel = null;
@@ -130,8 +139,17 @@ export class GuildQueue {
   async playNext() {
     if (this.isProcessing) return;
     this.isProcessing = true;
+    this.stopProgressInterval();
 
     try {
+      // Save previous track to history if valid
+      if (this.currentTrack && this.loopMode !== 'track') {
+        this.history.unshift(this.currentTrack);
+        if (this.history.length > 50) this.history.pop();
+      }
+
+      this.skipVotes.clear();
+
       if (this.loopMode === 'track' && this.currentTrack) {
         // Keep current track
       } else if (this.loopMode === 'queue' && this.currentTrack) {
@@ -150,17 +168,19 @@ export class GuildQueue {
 
       this.clearIdleTimer();
 
-      // Extract stream
-      const { resource } = await createAudioResourceFromUrl(this.currentTrack.url);
+      // Extract stream with active filter
+      const { resource } = await createAudioResourceFromUrl(this.currentTrack.url, this.activeFilter);
       this.resource = resource;
       if (this.resource.volume) {
         this.resource.volume.setVolume(this.volume);
       }
 
       this.player.play(this.resource);
+      this.playbackStartedAt = Date.now();
 
-      // Send/Update Now Playing Embed with Interactive Buttons
+      // Send/Update Now Playing Embed with Interactive Buttons & Live Progress
       await this.sendNowPlayingMessage();
+      this.startProgressInterval();
 
     } catch (error) {
       console.error(`Error playing track in guild ${this.guildId}:`, error);
@@ -182,17 +202,52 @@ export class GuildQueue {
     await this.playNext();
   }
 
+  startProgressInterval() {
+    this.stopProgressInterval();
+    this.progressInterval = setInterval(async () => {
+      if (this.player.state.status === AudioPlayerStatus.Playing && this.nowPlayingMessage && this.currentTrack) {
+        const elapsedSec = Math.floor((Date.now() - this.playbackStartedAt) / 1000);
+        const embed = createNowPlayingEmbed(this.currentTrack, this, elapsedSec);
+        try {
+          await this.nowPlayingMessage.edit({ embeds: [embed] });
+        } catch (e) {}
+      }
+    }, 15_000);
+  }
+
+  stopProgressInterval() {
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+      this.progressInterval = null;
+    }
+  }
+
   async sendNowPlayingMessage() {
     if (!this.textChannel || !this.currentTrack) return;
     this.cleanNowPlayingMessage();
 
-    const embed = createNowPlayingEmbed(this.currentTrack, this);
+    const elapsedSec = Math.floor((Date.now() - this.playbackStartedAt) / 1000);
+    const embed = createNowPlayingEmbed(this.currentTrack, this, elapsedSec);
     const components = createControlButtons(false, this.loopMode);
+
+    const files = [];
+    try {
+      // Generate audio visualizer waveform attachment asynchronously
+      const waveformBuffer = await generateWaveform(this.currentTrack.url);
+      if (waveformBuffer) {
+        const attachment = new AttachmentBuilder(waveformBuffer, { name: 'waveform.png' });
+        embed.setImage('attachment://waveform.png');
+        files.push(attachment);
+      }
+    } catch (e) {
+      console.error('Visualizer waveform generation error:', e.message);
+    }
 
     try {
       this.nowPlayingMessage = await this.textChannel.send({
         embeds: [embed],
         components,
+        files,
       });
     } catch (err) {
       console.error('Failed to send Now Playing embed:', err.message);
@@ -237,7 +292,46 @@ export class GuildQueue {
     return skipped;
   }
 
+  voteSkip(userId, totalListeners) {
+    if (!this.currentTrack) return { success: false, reason: 'No track playing' };
+    
+    // Requester or solo listener can skip instantly
+    if (userId === this.currentTrack.requestedBy || totalListeners <= 2) {
+      const skipped = this.skip();
+      return { success: true, skippedInstantly: true, track: skipped };
+    }
+
+    this.skipVotes.add(userId);
+    const votesNeeded = Math.ceil((totalListeners - 1) / 2); // Majority excluding bot
+
+    if (this.skipVotes.size >= votesNeeded) {
+      const skipped = this.skip();
+      return { success: true, votesReached: true, track: skipped };
+    }
+
+    return {
+      success: true,
+      votesCount: this.skipVotes.size,
+      votesNeeded,
+    };
+  }
+
+  async setFilter(filterType) {
+    this.activeFilter = filterType;
+    if (this.currentTrack && this.player.state.status === AudioPlayerStatus.Playing) {
+      const { resource } = await createAudioResourceFromUrl(this.currentTrack.url, this.activeFilter);
+      this.resource = resource;
+      if (this.resource.volume) {
+        this.resource.volume.setVolume(this.volume);
+      }
+      this.player.play(this.resource);
+    }
+    this.updateNowPlayingButtons(this.player.state.status === AudioPlayerStatus.Paused);
+    return this.activeFilter;
+  }
+
   stop() {
+    this.stopProgressInterval();
     this.tracks = [];
     this.currentTrack = null;
     this.player.stop(true);
@@ -278,7 +372,8 @@ export class GuildQueue {
 
   async updateNowPlayingButtons(isPaused) {
     if (this.nowPlayingMessage && this.currentTrack) {
-      const embed = createNowPlayingEmbed(this.currentTrack, this);
+      const elapsedSec = Math.floor((Date.now() - this.playbackStartedAt) / 1000);
+      const embed = createNowPlayingEmbed(this.currentTrack, this, elapsedSec);
       const components = createControlButtons(isPaused, this.loopMode);
       try {
         await this.nowPlayingMessage.edit({

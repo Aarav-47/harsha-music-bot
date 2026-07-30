@@ -72,11 +72,33 @@ function baseCookieArgs() {
   return [];
 }
 
+import { parseSpotifyUrl, detectPlatform } from './platformDetector.js';
+
+/**
+ * Filter chains for FFmpeg audio effects
+ */
+export const AUDIO_FILTERS = {
+  none: [],
+  bass: ['-af', 'equalizer=f=60:width_type=h:width=50:g=10'],
+  nightcore: ['-af', 'asetrate=48000*1.25,aresample=48000'],
+  vaporwave: ['-af', 'asetrate=48000*0.8,aresample=48000'],
+  '8d': ['-af', 'apulsator=hz=0.125'],
+};
+
 /**
  * Extract track info using --print fields (avoids format resolution issues).
  */
 export async function getTrackInfo(query, requestedBy) {
-  const cleanQuery = query.trim();
+  let cleanQuery = query.trim();
+
+  // If Spotify URL, parse title & artist via oEmbed first
+  if (/https?:\/\/(?:open|play)\.spotify\.com/i.test(cleanQuery)) {
+    const spotifyData = await parseSpotifyUrl(cleanQuery);
+    if (spotifyData && spotifyData.query) {
+      cleanQuery = spotifyData.query;
+    }
+  }
+
   const isUrl = /^https?:\/\//i.test(cleanQuery);
   const searchTarget = isUrl ? cleanQuery : `ytsearch1:${cleanQuery}`;
 
@@ -117,10 +139,13 @@ export async function getTrackInfo(query, requestedBy) {
 
         const [title, url, durationStr, thumbnail, uploader] = parts;
         const durationSec = parseFloat(durationStr) || 0;
+        const platform = detectPlatform(query);
 
         tracks.push({
           title: title || 'Harsha Music Track',
           url: url || cleanQuery,
+          originalUrl: query,
+          platform,
           durationSec,
           formattedDuration: formatDuration(durationSec),
           thumbnail: (thumbnail && thumbnail !== 'NA') ? thumbnail : 'https://cdn.discordapp.com/embed/avatars/0.png',
@@ -140,8 +165,9 @@ export async function getTrackInfo(query, requestedBy) {
 
 /**
  * Create a playable AudioResource from a track URL using yt-dlp piped through ffmpeg.
+ * Supports optional filterType ('bass', 'nightcore', 'vaporwave', '8d', 'none').
  */
-export async function createAudioResourceFromUrl(trackUrl) {
+export async function createAudioResourceFromUrl(trackUrl, filterType = 'none') {
   return new Promise((resolve, reject) => {
     const binaryPath = YTDLP_BIN || path.join(PROJECT_ROOT, 'node_modules/yt-dlp-exec/bin/yt-dlp');
 
@@ -158,19 +184,20 @@ export async function createAudioResourceFromUrl(trackUrl) {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    const ffmpegProc = spawn(
-      ffmpegPath,
-      [
-        '-i', 'pipe:0',
-        '-analyzeduration', '0',
-        '-loglevel', '0',
-        '-f', 's16le',
-        '-ar', '48000',
-        '-ac', '2',
-        'pipe:1',
-      ],
-      { stdio: ['pipe', 'pipe', 'pipe'] }
-    );
+    const filterArgs = AUDIO_FILTERS[filterType] || [];
+
+    const ffmpegArgs = [
+      '-i', 'pipe:0',
+      '-analyzeduration', '0',
+      '-loglevel', '0',
+      ...filterArgs,
+      '-f', 's16le',
+      '-ar', '48000',
+      '-ac', '2',
+      'pipe:1',
+    ];
+
+    const ffmpegProc = spawn(ffmpegPath, ffmpegArgs, { stdio: ['pipe', 'pipe', 'pipe'] });
 
     ytdlpProc.stdout.pipe(ffmpegProc.stdin);
 
