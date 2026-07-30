@@ -18,7 +18,9 @@ export default {
    * @param {import('discord.js').ChatInputCommandInteraction} interaction 
    */
   async execute(interaction) {
-    await interaction.deferReply();
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+    }
     const query = interaction.options.getString('query', true);
     const member = interaction.member;
 

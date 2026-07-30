@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, ActivityType } from 'discord.js';
+import { Client, GatewayIntentBits, Collection, ActivityType, MessageFlags } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
 import http from 'http';
@@ -50,7 +50,7 @@ for (const file of commandFiles) {
 }
 
 // Ready Event
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log(`\n⚡ Harsha Music Bot logged in successfully as ${client.user.tag}!`);
   console.log(`🌐 Connected to ${client.guilds.cache.size} server(s).`);
 
