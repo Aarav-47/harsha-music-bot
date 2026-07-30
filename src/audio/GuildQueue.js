@@ -72,18 +72,26 @@ export class GuildQueue {
     this.textChannel = textChannel;
 
     if (!this.connection || this.connection.state.status === VoiceConnectionStatus.Destroyed) {
+      console.log(`🔊 Joining voice channel: ${voiceChannel.name} (${voiceChannel.id})`);
+
       this.connection = joinVoiceChannel({
         channelId: voiceChannel.id,
         guildId: this.guildId,
         adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-        selfDeaf: true,
+      });
+
+      // Debug: log all state transitions
+      this.connection.on('stateChange', (oldState, newState) => {
+        console.log(`🔊 Voice connection: ${oldState.status} → ${newState.status}`);
       });
 
       try {
-        await entersState(this.connection, VoiceConnectionStatus.Ready, 20_000);
+        await entersState(this.connection, VoiceConnectionStatus.Ready, 30_000);
+        console.log('✅ Voice connection ready!');
       } catch (error) {
+        console.error('❌ Voice connection failed. Last state:', this.connection.state.status);
         this.destroy();
-        throw new Error('Could not join voice channel within 20 seconds!');
+        throw new Error('Could not join voice channel within 30 seconds!');
       }
 
       this.connection.subscribe(this.player);
