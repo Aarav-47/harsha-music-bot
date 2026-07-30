@@ -112,6 +112,7 @@ export async function getTrackInfo(query, requestedBy) {
       '--skip-download',
       '--ignore-no-formats-error',
       '--no-check-formats',
+      '--extractor-args', 'youtubetab:skip=authcheck',
       '--print', '%(title)s\t%(webpage_url)s\t%(duration)s\t%(thumbnail)s\t%(uploader)s',
       ...baseCookieArgs(),
     ];
@@ -177,6 +178,7 @@ export async function createAudioResourceFromUrl(trackUrl, filterType = 'none') 
       '-o', '-',
       '--no-warnings',
       '--no-check-certificate',
+      '--extractor-args', 'youtubetab:skip=authcheck',
       ...baseCookieArgs(),
     ];
 

@@ -31,6 +31,7 @@ export async function generateWaveform(trackUrl) {
       '-o', '-',
       '--no-warnings',
       '--no-check-certificate',
+      '--extractor-args', 'youtubetab:skip=authcheck',
     ];
 
     if (fs.existsSync(COOKIES_PATH)) {
