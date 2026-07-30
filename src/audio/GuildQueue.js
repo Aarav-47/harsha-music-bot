@@ -14,7 +14,7 @@ import {
   createQueueEmbed,
 } from '../utils/embedBuilder.js';
 import { generateWaveform } from '../utils/visualizer.js';
-import { AttachmentBuilder } from 'discord.js';
+import { AttachmentBuilder, MessageFlags } from 'discord.js';
 import { config } from '../config.js';
 
 export class GuildQueue {
@@ -395,7 +395,7 @@ export class GuildQueue {
     if (!member.voice.channel) {
       return interaction.reply({
         embeds: [createErrorEmbed('Voice Channel Required', 'You must be in a voice channel to use music controls!')],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -404,43 +404,43 @@ export class GuildQueue {
         const isPaused = this.player.state.status === AudioPlayerStatus.Paused;
         if (isPaused) {
           this.resume();
-          await interaction.reply({ embeds: [createSuccessEmbed('Resumed', '▶️ Playback resumed.')], ephemeral: true });
+          await interaction.reply({ embeds: [createSuccessEmbed('Resumed', '▶️ Playback resumed.')], flags: MessageFlags.Ephemeral });
         } else {
           this.pause();
-          await interaction.reply({ embeds: [createSuccessEmbed('Paused', '⏸️ Playback paused.')], ephemeral: true });
+          await interaction.reply({ embeds: [createSuccessEmbed('Paused', '⏸️ Playback paused.')], flags: MessageFlags.Ephemeral });
         }
         break;
       }
       case 'btn_skip': {
         const skipped = this.skip();
         if (skipped) {
-          await interaction.reply({ embeds: [createSuccessEmbed('Skipped', `⏭️ Skipped **${skipped.title}**`)], ephemeral: true });
+          await interaction.reply({ embeds: [createSuccessEmbed('Skipped', `⏭️ Skipped **${skipped.title}**`)], flags: MessageFlags.Ephemeral });
         } else {
-          await interaction.reply({ embeds: [createErrorEmbed('Skip Error', 'No track to skip!')], ephemeral: true });
+          await interaction.reply({ embeds: [createErrorEmbed('Skip Error', 'No track to skip!')], flags: MessageFlags.Ephemeral });
         }
         break;
       }
       case 'btn_stop': {
         this.stop();
-        await interaction.reply({ embeds: [createSuccessEmbed('Stopped', '⏹️ Music stopped and queue cleared.')], ephemeral: true });
+        await interaction.reply({ embeds: [createSuccessEmbed('Stopped', '⏹️ Music stopped and queue cleared.')], flags: MessageFlags.Ephemeral });
         break;
       }
       case 'btn_loop': {
         const newMode = this.toggleLoopMode();
-        await interaction.reply({ embeds: [createSuccessEmbed('Loop Mode Updated', `🔁 Loop mode set to **${newMode.toUpperCase()}**`)], ephemeral: true });
+        await interaction.reply({ embeds: [createSuccessEmbed('Loop Mode Updated', `🔁 Loop mode set to **${newMode.toUpperCase()}**`)], flags: MessageFlags.Ephemeral });
         break;
       }
       case 'btn_shuffle': {
         if (this.tracks.length < 2) {
-          return interaction.reply({ embeds: [createErrorEmbed('Shuffle Error', 'Need at least 2 tracks in queue to shuffle!')], ephemeral: true });
+          return interaction.reply({ embeds: [createErrorEmbed('Shuffle Error', 'Need at least 2 tracks in queue to shuffle!')], flags: MessageFlags.Ephemeral });
         }
         this.shuffle();
-        await interaction.reply({ embeds: [createSuccessEmbed('Shuffled', `🔀 Shuffled **${this.tracks.length}** queued tracks.`)], ephemeral: true });
+        await interaction.reply({ embeds: [createSuccessEmbed('Shuffled', `🔀 Shuffled **${this.tracks.length}** queued tracks.`)], flags: MessageFlags.Ephemeral });
         break;
       }
       case 'btn_queue': {
         const embed = createQueueEmbed(this, 1);
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         break;
       }
     }

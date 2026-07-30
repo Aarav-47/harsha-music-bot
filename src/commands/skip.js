@@ -1,18 +1,18 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { GuildQueue } from '../audio/GuildQueue.js';
 import { createSuccessEmbed, createErrorEmbed } from '../utils/embedBuilder.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('skip')
-    .setDescription('Skip the currently playing song'),
+    .setDescription('Skip the currently playing track'),
 
   async execute(interaction) {
     const queue = GuildQueue.managers.get(interaction.guildId);
     if (!queue || !queue.currentTrack) {
       return interaction.reply({
-        embeds: [createErrorEmbed('Nothing Playing', 'There is no track to skip!')],
-        ephemeral: true,
+        embeds: [createErrorEmbed('Skip Error', 'There is no track currently playing to skip!')],
+        flags: MessageFlags.Ephemeral,
       });
     }
 
@@ -24,7 +24,7 @@ export default {
     } else {
       return interaction.reply({
         embeds: [createErrorEmbed('Skip Failed', 'Could not skip current track.')],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },

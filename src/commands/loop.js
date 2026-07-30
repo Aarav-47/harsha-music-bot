@@ -1,20 +1,20 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { GuildQueue } from '../audio/GuildQueue.js';
 import { createSuccessEmbed, createErrorEmbed } from '../utils/embedBuilder.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('loop')
-    .setDescription('Set queue repeat loop mode')
+    .setDescription('Set loop mode for the current song or entire queue')
     .addStringOption((option) =>
       option
         .setName('mode')
         .setDescription('Loop mode')
         .setRequired(true)
         .addChoices(
-          { name: 'Disabled (Off)', value: 'off' },
-          { name: 'Single Track', value: 'track' },
-          { name: 'Entire Queue', value: 'queue' }
+          { name: 'Off', value: 'off' },
+          { name: 'Track', value: 'track' },
+          { name: 'Queue', value: 'queue' }
         )
     ),
 
@@ -22,8 +22,8 @@ export default {
     const queue = GuildQueue.managers.get(interaction.guildId);
     if (!queue) {
       return interaction.reply({
-        embeds: [createErrorEmbed('Inactive Player', 'No active music player in this server!')],
-        ephemeral: true,
+        embeds: [createErrorEmbed('Inactive Player', 'No active queue in this server!')],
+        flags: MessageFlags.Ephemeral,
       });
     }
 

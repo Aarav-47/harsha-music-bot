@@ -73,7 +73,7 @@ client.on('interactionCreate', async (interaction) => {
       console.error(`Error executing /${interaction.commandName}:`, error);
       const replyOptions = {
         embeds: [createErrorEmbed('Harsha Command Error', 'An unexpected error occurred while processing this command.')],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       };
       if (interaction.replied || interaction.deferred) {
         await interaction.followUp(replyOptions).catch(() => {});
@@ -90,7 +90,7 @@ client.on('interactionCreate', async (interaction) => {
     if (!queue) {
       return interaction.reply({
         embeds: [createErrorEmbed('Inactive Player', 'No active music queue in this server!')],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 

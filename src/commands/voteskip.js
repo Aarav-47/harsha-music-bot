@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { GuildQueue } from '../audio/GuildQueue.js';
 import { createSuccessEmbed, createErrorEmbed } from '../utils/embedBuilder.js';
 
@@ -12,7 +12,7 @@ export async function execute(interaction) {
   if (!member.voice.channel) {
     return interaction.reply({
       embeds: [createErrorEmbed('Voice Channel Required', 'You must be in a voice channel to vote skip!')],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -20,7 +20,7 @@ export async function execute(interaction) {
   if (!queue.currentTrack) {
     return interaction.reply({
       embeds: [createErrorEmbed('Nothing Playing', 'There is no track currently playing to skip.')],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 

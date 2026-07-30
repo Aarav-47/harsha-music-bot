@@ -1,24 +1,25 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { GuildQueue } from '../audio/GuildQueue.js';
 import { createQueueEmbed, createErrorEmbed } from '../utils/embedBuilder.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('queue')
-    .setDescription('Display the current music queue')
+    .setDescription('Display the queued songs')
     .addIntegerOption((option) =>
       option
         .setName('page')
         .setDescription('Page number to view')
+        .setRequired(false)
         .setMinValue(1)
     ),
 
   async execute(interaction) {
     const queue = GuildQueue.managers.get(interaction.guildId);
-    if (!queue || (!queue.currentTrack && queue.tracks.length === 0)) {
+    if (!queue) {
       return interaction.reply({
-        embeds: [createErrorEmbed('Empty Queue', 'The music queue is currently empty!')],
-        ephemeral: true,
+        embeds: [createErrorEmbed('Inactive Player', 'No active queue in this server!')],
+        flags: MessageFlags.Ephemeral,
       });
     }
 

@@ -1,18 +1,18 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { GuildQueue } from '../audio/GuildQueue.js';
 import { createSuccessEmbed, createErrorEmbed } from '../utils/embedBuilder.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('shuffle')
-    .setDescription('Randomly shuffle the current music queue'),
+    .setDescription('Shuffle all queued tracks'),
 
   async execute(interaction) {
     const queue = GuildQueue.managers.get(interaction.guildId);
     if (!queue || queue.tracks.length < 2) {
       return interaction.reply({
-        embeds: [createErrorEmbed('Shuffle Error', 'At least 2 tracks must be in queue to shuffle!')],
-        ephemeral: true,
+        embeds: [createErrorEmbed('Shuffle Error', 'Need at least 2 tracks in queue to shuffle!')],
+        flags: MessageFlags.Ephemeral,
       });
     }
 

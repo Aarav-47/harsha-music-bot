@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { GuildQueue } from '../audio/GuildQueue.js';
 import { createHistoryEmbed, createErrorEmbed } from '../utils/embedBuilder.js';
 
@@ -19,7 +19,7 @@ export async function execute(interaction) {
   if (queue.history.length === 0) {
     return interaction.reply({
       embeds: [createErrorEmbed('History Empty', 'No songs have been played in this session yet!')],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   }
 

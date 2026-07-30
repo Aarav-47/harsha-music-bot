@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import { GuildQueue } from '../audio/GuildQueue.js';
 import { createNowPlayingEmbed, createControlButtons, createErrorEmbed } from '../utils/embedBuilder.js';
 
@@ -12,7 +12,7 @@ export default {
     if (!queue || !queue.currentTrack) {
       return interaction.reply({
         embeds: [createErrorEmbed('Nothing Playing', 'There is currently no music playing!')],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
 
