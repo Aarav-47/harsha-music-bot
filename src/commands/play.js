@@ -18,25 +18,22 @@ export default {
    * @param {import('discord.js').ChatInputCommandInteraction} interaction 
    */
   async execute(interaction) {
+    await interaction.deferReply();
     const query = interaction.options.getString('query', true);
     const member = interaction.member;
 
     if (!member.voice.channel) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [createErrorEmbed('Voice Channel Required', 'You must join a voice channel first to play music!')],
-        ephemeral: true,
       });
     }
 
     const botMember = interaction.guild.members.me;
     if (botMember.voice.channelId && botMember.voice.channelId !== member.voice.channelId) {
-      return interaction.reply({
+      return interaction.editReply({
         embeds: [createErrorEmbed('Wrong Voice Channel', 'You must be in the same voice channel as the bot!')],
-        ephemeral: true,
       });
     }
-
-    await interaction.deferReply();
 
     try {
       const tracks = await getTrackInfo(query, interaction.user.id);
